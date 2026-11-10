@@ -36,6 +36,26 @@ draw = ImageDraw.Draw(img)
 
 scene = "title"
 prev_a = False
+PW, PH = 16, 24      # 캐릭터 크기
+SPEED = 4            # 한 프레임에 움직이는 픽셀 수
+px, py = 8, 130      # 캐릭터 왼쪽 위 좌표
+age = 0
+
+def move_player():
+    global px, py
+    if not LEFT.value:
+        px -= SPEED
+    if not RIGHT.value:
+        px += SPEED
+    if not UP.value:
+        py -= SPEED
+    if not DOWN.value:
+        py += SPEED
+    px = max(0, min(W - PW, px))
+    py = max(40, min(H - PH, py))   # 위쪽 40칸은 글자 자리
+
+def draw_player():
+    draw.rectangle((px, py, px + PW, py + PH), fill=(0, 220, 140))
 
 def draw_title():
     draw.rectangle((0, 0, W, H), fill=(10, 10, 25))
@@ -46,6 +66,12 @@ def draw_baby():
     draw.rectangle((0, 0, W, H), fill=(10, 10, 25))
     draw.text((8, 8), "0살", font=FONT, fill=(255, 255, 255))
     draw.text((8, 28), "중산층 가정에서 태어났다", font=FONT, fill=(255, 255, 255))
+    draw_player()
+
+def draw_stage():
+    draw.rectangle((0, 0, W, H), fill=(10, 10, 25))
+    draw.text((8, 8), f"{age}살", font=FONT, fill=(255, 255, 255))
+    draw_player()
 
 while True:
     now = time.monotonic()
@@ -56,11 +82,21 @@ while True:
 
     if scene == "title" and a_pressed:
         scene = "baby"
+    elif scene == "baby":
+        move_player()
+        if px >= W - PW:          # 오른쪽 끝에 닿으면
+            scene = "stage"
+            age = 15
+            px, py = 8, 130
+    elif scene == "stage":
+        move_player()
 
     if scene == "title":
         draw_title()
     elif scene == "baby":
         draw_baby()
+    elif scene == "stage":
+        draw_stage()
     disp.image(img)
 
     time.sleep(max(0, 1 / FPS - (time.monotonic() - now)))
