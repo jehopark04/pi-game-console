@@ -2,6 +2,7 @@ import time
 import board, digitalio
 from PIL import Image, ImageDraw, ImageFont
 from adafruit_rgb_display import st7789
+from data import STAGES
 
 W = H = 240
 FPS = 20
@@ -40,6 +41,8 @@ PW, PH = 16, 24      # 캐릭터 크기
 SPEED = 4            # 한 프레임에 움직이는 픽셀 수
 px, py = 8, 130      # 캐릭터 왼쪽 위 좌표
 age = 0
+UP_DOOR   = (150, 50, 232, 120)    # (왼, 위, 오른, 아래)
+DOWN_DOOR = (150, 160, 232, 230)
 
 def move_player():
     global px, py
@@ -57,6 +60,10 @@ def move_player():
 def draw_player():
     draw.rectangle((px, py, px + PW, py + PH), fill=(0, 220, 140))
 
+def hit(door):
+    x1, y1, x2, y2 = door
+    return px < x2 and px + PW > x1 and py < y2 and py + PH > y1
+
 def draw_title():
     draw.rectangle((0, 0, W, H), fill=(10, 10, 25))
     draw.text((W // 2, 90), "자수성가", font=FONT_BIG, fill=(255, 215, 0), anchor="mm")
@@ -71,6 +78,15 @@ def draw_baby():
 def draw_stage():
     draw.rectangle((0, 0, W, H), fill=(10, 10, 25))
     draw.text((8, 8), f"{age}살", font=FONT, fill=(255, 255, 255))
+    st = STAGES.get(age)
+    if st:
+        draw.text((8, 24), st["text"], font=FONT, fill=(255, 255, 255))
+        for door, choice in ((UP_DOOR, st["up"]), (DOWN_DOOR, st["down"])):
+            draw.rectangle(door, outline=(255, 215, 0), fill=(60, 40, 20))
+            cx, cy = (door[0] + door[2]) // 2, (door[1] + door[3]) // 2
+            draw.text((cx, cy), choice["label"], font=FONT, fill=(255, 255, 255), anchor="mm")
+    else:
+        draw.text((8, 24), "준비 중", font=FONT, fill=(150, 150, 150))
     draw_player()
 
 while True:
@@ -90,6 +106,14 @@ while True:
             px, py = 8, 130
     elif scene == "stage":
         move_player()
+        st = STAGES.get(age)
+        if st:
+            if hit(UP_DOOR):
+                age = st["up"]["next"]
+                px, py = 8, 130
+            elif hit(DOWN_DOOR):
+                age = st["down"]["next"]
+                px, py = 8, 130
 
     if scene == "title":
         draw_title()
