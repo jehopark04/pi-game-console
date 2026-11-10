@@ -6,6 +6,7 @@ from adafruit_rgb_display import st7789
 W = H = 240
 FPS = 20
 FONT = ImageFont.truetype("assets/fonts/Galmuri11.ttf", 12)
+FONT_BIG = ImageFont.truetype("assets/fonts/Galmuri11.ttf", 24)
 
 cs  = digitalio.DigitalInOut(board.CE0)
 dc  = digitalio.DigitalInOut(board.D25)
@@ -16,7 +17,7 @@ bl.switch_to_output()
 bl.value = True
 
 spi = board.SPI()
-disp = st7789.ST7789(spi, width=W, height=H, rotation=0, y_offset=80,
+disp = st7789.ST7789(spi, width=W, height=H, rotation=180, y_offset=80,
                      cs=cs, dc=dc, rst=rst, baudrate=24000000)
 
 def btn(pin):
@@ -32,11 +33,25 @@ CENTER = btn(board.D4)
 img = Image.new("RGB", (W, H))
 draw = ImageDraw.Draw(img)
 
+scene = "title"
+
+def draw_title():
+    draw.rectangle((0, 0, W, H), fill=(10, 10, 25))
+    draw.text((W // 2, 90), "자수성가", font=FONT_BIG, fill=(255, 215, 0), anchor="mm")
+    draw.text((W // 2, 170), "A 버튼을 눌러 시작", font=FONT, fill=(200, 200, 200), anchor="mm")
+
+def draw_baby():
+    draw.rectangle((0, 0, W, H), fill=(10, 10, 25))
+    draw.text((8, 8), "0살", font=FONT, fill=(255, 255, 255))
+    draw.text((8, 28), "중산층 가정에서 태어났다", font=FONT, fill=(255, 255, 255))
+
 while True:
     now = time.monotonic()
 
-    draw.rectangle((0, 0, W, H), fill=(10, 10, 25))
-    draw.text((8, 8), "중산층 가정에서 태어났다", font=FONT, fill=(255, 255, 255))
+    if scene == "title":
+        draw_title()
+    elif scene == "baby":
+        draw_baby()
     disp.image(img)
 
     time.sleep(max(0, 1 / FPS - (time.monotonic() - now)))
