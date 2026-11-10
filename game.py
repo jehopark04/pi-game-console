@@ -3,6 +3,7 @@ import board, digitalio
 from PIL import Image, ImageDraw, ImageFont
 from adafruit_rgb_display import st7789
 from data import STAGES, STARTUP_40
+from sprites import SCALE, BODY, BABY, PALETTES, AGE_SPRITE
 
 W = H = 240
 FPS = 20
@@ -37,7 +38,7 @@ draw = ImageDraw.Draw(img)
 
 scene = "title"
 prev_a = False
-PW, PH = 16, 24      # 캐릭터 크기
+PW, PH = 8 * SCALE, 12 * SCALE   # 캐릭터 크기 (24x36)
 SPEED = 4            # 한 프레임에 움직이는 픽셀 수
 px, py = 8, 130      # 캐릭터 왼쪽 위 좌표
 age = 0
@@ -59,7 +60,25 @@ def move_player():
     py = max(40, min(H - PH, py))   # 위쪽 40칸은 글자 자리
 
 def draw_player():
-    draw.rectangle((px, py, px + PW, py + PH), fill=(0, 220, 140))
+    name = AGE_SPRITE.get(age, "worker")
+    grid = BABY if name == "baby" else BODY
+    colors = PALETTES[name]
+    for row, line in enumerate(grid):
+        for col, ch in enumerate(line):
+            if ch in colors:
+                x, y = px + col * SCALE, py + row * SCALE
+                draw.rectangle((x, y, x + SCALE - 1, y + SCALE - 1), fill=colors[ch])
+
+def draw_background():
+    draw.rectangle((0, 0, W, H), fill=(25, 30, 60))        # 하늘
+    draw.rectangle((0, 40, W, 42), fill=(80, 80, 120))     # 글자 영역 구분선
+    draw.rectangle((0, 226, W, H), fill=(60, 45, 30))      # 땅
+
+def draw_door(door, label):
+    x1, y1, x2, y2 = door
+    draw.rectangle(door, fill=(110, 70, 35), outline=(60, 35, 15), width=3)
+    draw.ellipse((x2 - 14, (y1 + y2) // 2 - 3, x2 - 8, (y1 + y2) // 2 + 3), fill=(255, 215, 0))
+    draw.text(((x1 + x2) // 2, (y1 + y2) // 2), label, font=FONT, fill=(255, 255, 255), anchor="mm")
 
 def hit(door):
     x1, y1, x2, y2 = door
@@ -85,21 +104,19 @@ def draw_title():
     draw.text((W // 2, 170), "A 버튼을 눌러 시작", font=FONT, fill=(200, 200, 200), anchor="mm")
 
 def draw_baby():
-    draw.rectangle((0, 0, W, H), fill=(10, 10, 25))
+    draw_background()
     draw.text((8, 8), "0살", font=FONT, fill=(255, 255, 255))
     draw.text((8, 28), "중산층 가정에서 태어났다", font=FONT, fill=(255, 255, 255))
     draw_player()
 
 def draw_stage():
-    draw.rectangle((0, 0, W, H), fill=(10, 10, 25))
+    draw_background()
     draw.text((8, 8), f"{age}살", font=FONT, fill=(255, 255, 255))
     st = stage_data()
     if st:
         draw.text((8, 24), st["text"], font=FONT, fill=(255, 255, 255))
         for door, choice in ((UP_DOOR, st["up"]), (DOWN_DOOR, st["down"])):
-            draw.rectangle(door, outline=(255, 215, 0), fill=(60, 40, 20))
-            cx, cy = (door[0] + door[2]) // 2, (door[1] + door[3]) // 2
-            draw.text((cx, cy), choice["label"], font=FONT, fill=(255, 255, 255), anchor="mm")
+            draw_door(door, choice["label"])
     else:
         draw.text((8, 24), "군대: 오른쪽 끝까지 가자 (임시)", font=FONT, fill=(150, 150, 150))
     draw_player()
