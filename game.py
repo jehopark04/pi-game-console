@@ -2,7 +2,7 @@ import time
 import board, digitalio
 from PIL import Image, ImageDraw, ImageFont
 from adafruit_rgb_display import st7789
-from data import STAGES
+from data import STAGES, STARTUP_40
 
 W = H = 240
 FPS = 20
@@ -43,6 +43,7 @@ px, py = 8, 130      # 캐릭터 왼쪽 위 좌표
 age = 0
 UP_DOOR   = (150, 50, 232, 120)    # (왼, 위, 오른, 아래)
 DOWN_DOOR = (150, 160, 232, 230)
+choices = {}         # 나이: 고른 선택지 이름
 
 def move_player():
     global px, py
@@ -64,6 +65,20 @@ def hit(door):
     x1, y1, x2, y2 = door
     return px < x2 and px + PW > x1 and py < y2 and py + PH > y1
 
+def stage_data():
+    if age == 40 and choices.get(27) == "창업":
+        return STARTUP_40
+    return STAGES.get(age)
+
+def choose(choice):
+    global age, scene, px, py
+    choices[age] = choice["label"]
+    px, py = 8, 130
+    if choice["next"] is None:
+        scene = "ending"
+    else:
+        age = choice["next"]
+
 def draw_title():
     draw.rectangle((0, 0, W, H), fill=(10, 10, 25))
     draw.text((W // 2, 90), "자수성가", font=FONT_BIG, fill=(255, 215, 0), anchor="mm")
@@ -78,7 +93,7 @@ def draw_baby():
 def draw_stage():
     draw.rectangle((0, 0, W, H), fill=(10, 10, 25))
     draw.text((8, 8), f"{age}살", font=FONT, fill=(255, 255, 255))
-    st = STAGES.get(age)
+    st = stage_data()
     if st:
         draw.text((8, 24), st["text"], font=FONT, fill=(255, 255, 255))
         for door, choice in ((UP_DOOR, st["up"]), (DOWN_DOOR, st["down"])):
@@ -86,8 +101,15 @@ def draw_stage():
             cx, cy = (door[0] + door[2]) // 2, (door[1] + door[3]) // 2
             draw.text((cx, cy), choice["label"], font=FONT, fill=(255, 255, 255), anchor="mm")
     else:
-        draw.text((8, 24), "준비 중", font=FONT, fill=(150, 150, 150))
+        draw.text((8, 24), "군대: 오른쪽 끝까지 가자 (임시)", font=FONT, fill=(150, 150, 150))
     draw_player()
+
+def draw_ending():
+    draw.rectangle((0, 0, W, H), fill=(10, 10, 25))
+    draw.text((8, 8), "엔딩 (2주차에 구현)", font=FONT, fill=(255, 215, 0))
+    for i, (a, c) in enumerate(choices.items()):
+        draw.text((8, 32 + i * 16), f"{a}살: {c}", font=FONT, fill=(255, 255, 255))
+    draw.text((8, 216), "A: 처음으로", font=FONT, fill=(200, 200, 200))
 
 while True:
     now = time.monotonic()
@@ -106,14 +128,19 @@ while True:
             px, py = 8, 130
     elif scene == "stage":
         move_player()
-        st = STAGES.get(age)
+        st = stage_data()
         if st:
             if hit(UP_DOOR):
-                age = st["up"]["next"]
-                px, py = 8, 130
+                choose(st["up"])
             elif hit(DOWN_DOOR):
-                age = st["down"]["next"]
-                px, py = 8, 130
+                choose(st["down"])
+        elif age == 22 and px >= W - PW:     # 군대 임시: 오른쪽 끝까지 가면 통과
+            age = 30 if choices.get(20) == "바로 취업" else 27
+            px, py = 8, 130
+    elif scene == "ending" and a_pressed:
+        scene = "title"
+        age = 0
+        choices.clear()
 
     if scene == "title":
         draw_title()
@@ -121,6 +148,8 @@ while True:
         draw_baby()
     elif scene == "stage":
         draw_stage()
+    elif scene == "ending":
+        draw_ending()
     disp.image(img)
 
     time.sleep(max(0, 1 / FPS - (time.monotonic() - now)))
