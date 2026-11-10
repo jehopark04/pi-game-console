@@ -29,11 +29,13 @@ def btn(pin):
 UP, DOWN = btn(board.D17), btn(board.D22)
 LEFT, RIGHT = btn(board.D27), btn(board.D23)
 CENTER = btn(board.D4)
+BTN_A, BTN_B = btn(board.D5), btn(board.D6)
 
 img = Image.new("RGB", (W, H))
 draw = ImageDraw.Draw(img)
 
 scene = "title"
+prev_a = False
 
 def draw_title():
     draw.rectangle((0, 0, W, H), fill=(10, 10, 25))
@@ -47,6 +49,13 @@ def draw_baby():
 
 while True:
     now = time.monotonic()
+
+    a = not BTN_A.value          # 누르면 LOW라서 반전
+    a_pressed = a and not prev_a  # 이번 프레임에 처음 눌림
+    prev_a = a
+
+    if scene == "title" and a_pressed:
+        scene = "baby"
 
     if scene == "title":
         draw_title()
