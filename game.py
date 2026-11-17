@@ -2,7 +2,7 @@ import time, random
 import board, digitalio
 from PIL import Image, ImageDraw, ImageFont
 from adafruit_rgb_display import st7789
-from data import STAGES, STARTUP_40
+from data import STAGES, STARTUP_40, ENDINGS
 from sprites import SCALE, BODY, BABY, PALETTES, AGE_SPRITE
 import army
 
@@ -158,12 +158,22 @@ def draw_gameover():
     draw.text((W // 2, 100), "GAME OVER", font=FONT_BIG, fill=(255, 60, 60), anchor="mm")
     draw.text((W // 2, 170), "A: 처음으로", font=FONT, fill=(200, 200, 200), anchor="mm")
 
+def ending_type():
+    if success.get(40) is False:             # 40살 사업 실패
+        return "poor"
+    if choices.get(60) == "계속 일하기":      # 60살 이후 계속 일하기
+        return "broken"
+    if success.get(40):                      # 40살 사업 성공 + 은퇴
+        return "rich"
+    return "happy"                           # 40살 현상 유지 + 은퇴
+
 def draw_ending():
+    e = ENDINGS[ending_type()]
     draw.rectangle((0, 0, W, H), fill=(10, 10, 25))
-    draw.text((8, 8), "엔딩 (2주차에 구현)", font=FONT, fill=(255, 215, 0))
-    for i, (a, c) in enumerate(choices.items()):
-        draw.text((8, 32 + i * 16), f"{a}살: {c}", font=FONT, fill=(255, 255, 255))
-    draw.text((8, 216), "A: 처음으로", font=FONT, fill=(200, 200, 200))
+    draw.text((W // 2, 80), e["title"], font=FONT_BIG, fill=e["color"], anchor="mm")
+    draw.text((W // 2, 130), e["lines"][0], font=FONT, fill=(255, 255, 255), anchor="mm")
+    draw.text((W // 2, 150), e["lines"][1], font=FONT, fill=(255, 255, 255), anchor="mm")
+    draw.text((W // 2, 210), "A: 처음으로", font=FONT, fill=(200, 200, 200), anchor="mm")
 
 while True:
     now = time.monotonic()
