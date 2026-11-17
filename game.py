@@ -4,6 +4,7 @@ from PIL import Image, ImageDraw, ImageFont
 from adafruit_rgb_display import st7789
 from data import STAGES, STARTUP_40
 from sprites import SCALE, BODY, BABY, PALETTES, AGE_SPRITE
+import army
 
 W = H = 240
 FPS = 20
@@ -97,6 +98,9 @@ def choose(choice):
         scene = "ending"
     else:
         age = choice["next"]
+    if age == 22:
+        scene = "army"
+        army.start()
 
 def draw_title():
     draw.rectangle((0, 0, W, H), fill=(10, 10, 25))
@@ -117,9 +121,22 @@ def draw_stage():
         draw.text((8, 24), st["text"], font=FONT, fill=(255, 255, 255))
         for door, choice in ((UP_DOOR, st["up"]), (DOWN_DOOR, st["down"])):
             draw_door(door, choice["label"])
-    else:
-        draw.text((8, 24), "군대: 오른쪽 끝까지 가자 (임시)", font=FONT, fill=(150, 150, 150))
     draw_player()
+
+def draw_army():
+    draw_background()
+    draw.text((8, 8), "22살 군대", font=FONT, fill=(255, 255, 255))
+    draw.text((8, 24), "총알을 피해 오른쪽 끝까지!", font=FONT, fill=(255, 255, 255))
+    draw.text((W - 8, 8), "♥" * army.hearts, font=FONT, fill=(255, 60, 60), anchor="ra")
+    for x, y in army.bullets:
+        draw.rectangle((x, y, x + army.SIZE, y + army.SIZE), fill=(255, 220, 0))
+    if not army.is_safe() or int(time.monotonic() * 10) % 2:   # 무적일 때는 깜빡이기
+        draw_player()
+
+def draw_gameover():
+    draw.rectangle((0, 0, W, H), fill=(40, 0, 0))
+    draw.text((W // 2, 100), "GAME OVER", font=FONT_BIG, fill=(255, 60, 60), anchor="mm")
+    draw.text((W // 2, 170), "A: 처음으로", font=FONT, fill=(200, 200, 200), anchor="mm")
 
 def draw_ending():
     draw.rectangle((0, 0, W, H), fill=(10, 10, 25))
@@ -151,9 +168,20 @@ while True:
                 choose(st["up"])
             elif hit(DOWN_DOOR):
                 choose(st["down"])
-        elif age == 22 and px >= W - PW:     # 군대 임시: 오른쪽 끝까지 가면 통과
+    elif scene == "army":
+        move_player()
+        army.update(px, py, PW, PH)
+        if army.hearts <= 0:
+            scene = "gameover"
+        elif px >= W - PW:                    # 오른쪽 끝까지 가면 통과
+            scene = "stage"
             age = 30 if choices.get(20) == "바로 취업" else 27
             px, py = 8, 130
+    elif scene == "gameover" and a_pressed:
+        scene = "title"
+        age = 0
+        px, py = 8, 130
+        choices.clear()
     elif scene == "ending" and a_pressed:
         scene = "title"
         age = 0
@@ -165,6 +193,10 @@ while True:
         draw_baby()
     elif scene == "stage":
         draw_stage()
+    elif scene == "army":
+        draw_army()
+    elif scene == "gameover":
+        draw_gameover()
     elif scene == "ending":
         draw_ending()
     disp.image(img)
