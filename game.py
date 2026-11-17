@@ -1,4 +1,4 @@
-import time
+import time, random
 import board, digitalio
 from PIL import Image, ImageDraw, ImageFont
 from adafruit_rgb_display import st7789
@@ -47,6 +47,7 @@ UP_DOOR   = (150, 50, 232, 120)    # (왼, 위, 오른, 아래)
 DOWN_DOOR = (150, 160, 232, 230)
 choices = {}         # 나이: 고른 선택지 이름
 picked = None        # 방금 고른 선택지 (결과 화면에 보여 줄 것)
+success = {}         # 확률 선택의 성공 여부 {30: True, 40: False}
 
 def move_player():
     global px, py
@@ -95,12 +96,15 @@ def choose(choice):
     global scene, picked
     choices[age] = choice["label"]
     picked = choice
+    if "fail" in choice:                                  # 투자, 사업은 확률로 정함
+        rate = 0.7 if (age == 40 and success.get(30)) else 0.5   # 투자 성공했으면 사업 70%
+        success[age] = random.random() < rate
     scene = "result"
 
 def next_stage():
     global age, scene, px, py
     px, py = 8, 130
-    if picked["next"] is None:
+    if picked["next"] is None or (age == 40 and not success.get(40, True)):   # 사업 실패면 바로 엔딩
         scene = "ending"
         return
     age = picked["next"]
@@ -133,7 +137,10 @@ def draw_stage():
 def draw_result():
     draw.rectangle((0, 0, W, H), fill=(10, 10, 25))
     draw.text((W // 2, 80), f"{age}살의 선택: {picked['label']}", font=FONT, fill=(255, 215, 0), anchor="mm")
-    draw.text((W // 2, 120), picked["result"], font=FONT, fill=(255, 255, 255), anchor="mm")
+    if success.get(age, True):
+        draw.text((W // 2, 120), picked["result"], font=FONT, fill=(255, 255, 255), anchor="mm")
+    else:
+        draw.text((W // 2, 120), picked["fail"], font=FONT, fill=(255, 80, 80), anchor="mm")
     draw.text((W // 2, 200), "A: 다음으로", font=FONT, fill=(200, 200, 200), anchor="mm")
 
 def draw_army():
@@ -197,10 +204,12 @@ while True:
         age = 0
         px, py = 8, 130
         choices.clear()
+        success.clear()
     elif scene == "ending" and a_pressed:
         scene = "title"
         age = 0
         choices.clear()
+        success.clear()
 
     if scene == "title":
         draw_title()
