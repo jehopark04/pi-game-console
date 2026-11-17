@@ -46,6 +46,7 @@ age = 0
 UP_DOOR   = (150, 50, 232, 120)    # (왼, 위, 오른, 아래)
 DOWN_DOOR = (150, 160, 232, 230)
 choices = {}         # 나이: 고른 선택지 이름
+picked = None        # 방금 고른 선택지 (결과 화면에 보여 줄 것)
 
 def move_player():
     global px, py
@@ -91,13 +92,19 @@ def stage_data():
     return STAGES.get(age)
 
 def choose(choice):
-    global age, scene, px, py
+    global scene, picked
     choices[age] = choice["label"]
+    picked = choice
+    scene = "result"
+
+def next_stage():
+    global age, scene, px, py
     px, py = 8, 130
-    if choice["next"] is None:
+    if picked["next"] is None:
         scene = "ending"
-    else:
-        age = choice["next"]
+        return
+    age = picked["next"]
+    scene = "stage"
     if age == 22:
         scene = "army"
         army.start()
@@ -122,6 +129,12 @@ def draw_stage():
         for door, choice in ((UP_DOOR, st["up"]), (DOWN_DOOR, st["down"])):
             draw_door(door, choice["label"])
     draw_player()
+
+def draw_result():
+    draw.rectangle((0, 0, W, H), fill=(10, 10, 25))
+    draw.text((W // 2, 80), f"{age}살의 선택: {picked['label']}", font=FONT, fill=(255, 215, 0), anchor="mm")
+    draw.text((W // 2, 120), picked["result"], font=FONT, fill=(255, 255, 255), anchor="mm")
+    draw.text((W // 2, 200), "A: 다음으로", font=FONT, fill=(200, 200, 200), anchor="mm")
 
 def draw_army():
     draw_background()
@@ -168,6 +181,8 @@ while True:
                 choose(st["up"])
             elif hit(DOWN_DOOR):
                 choose(st["down"])
+    elif scene == "result" and a_pressed:
+        next_stage()
     elif scene == "army":
         move_player()
         army.update(px, py, PW, PH)
@@ -193,6 +208,8 @@ while True:
         draw_baby()
     elif scene == "stage":
         draw_stage()
+    elif scene == "result":
+        draw_result()
     elif scene == "army":
         draw_army()
     elif scene == "gameover":
